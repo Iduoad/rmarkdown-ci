@@ -1,128 +1,878 @@
---- 
-title: "bookdown: Authoring Books and Technical Documents with R Markdown"
-author: "Yihui Xie"
-date: "`r Sys.Date()`"
-knit: "bookdown::render_book"
-documentclass: krantz
-bibliography: [book.bib, packages.bib]
-biblio-style: apalike
-link-citations: yes
-colorlinks: yes
-lot: yes
-lof: yes
-fontsize: 12pt
-monofont: "Source Code Pro"
-monofontoptions: "Scale=0.7"
-site: bookdown::bookdown_site
-description: "A guide to authoring books with R Markdown, including how to generate figures and tables, and insert cross-references, citations, HTML widgets, and Shiny apps in R Markdown. The book can be exported to HTML, PDF, and e-books (e.g. EPUB). The book style is customizable. You can easily write and preview the book in RStudio IDE or other editors, and host the book wherever you want (e.g. bookdown.org)."
-url: 'https\://bookdown.org/yihui/bookdown/'
-github-repo: rstudio/bookdown
-cover-image: images/cover.jpg
+---
+title: "pagedown: Create Paged HTML Documents for Printing from R Markdown"
+shorttitle: "Printing R Markdown with CSS"
+author: "Yihui Xie and Romain Lesur"
+date: '`r Sys.Date()`'
+subtitle: A Less Traveled Road to PDF and Printing
+output:
+  pagedown::html_paged:
+    toc: true
+    self_contained: false
+    front_cover: pagedown_hex.svg
+toc-title: Contents
+paged-footnotes: true
+lot: true
+lof: true
+bibliography: index.bib
 ---
 
-```{r setup, include=FALSE}
-options(
-  htmltools.dir.version = FALSE, formatR.indent = 2,
-  width = 55, digits = 4, warnPartialMatchAttr = FALSE, warnPartialMatchDollar = FALSE
-)
+# Introduction
 
-local({
-  r = getOption('repos')
-  if (!length(r) || identical(unname(r['CRAN']), '@CRAN@'))
-    r['CRAN'] = 'https://cran.rstudio.com' 
-  options(repos = r)
-})
+When talking about PDF and printing, we often think of tools like LaTeX and Microsoft Word. When talking about HTML and CSS, we may have never imagined their possible off-screen use such as printing to PDF.
 
-lapply(c('DT', 'citr', 'formatR', 'svglite'), function(pkg) {
-  if (system.file(package = pkg) == '') install.packages(pkg)
-})
+Can we print a book with HTML and CSS? W3C published [the first working draft](https://www.w3.org/1999/06/WD-css3-page-19990623) on "Paged Media Properties for CSS(3)", which was last updated in 2013. Although the working draft has been there for nearly two decades, it is still not common to see authors write or print books with HTML and CSS. The main reason is that the W3C specs are still in the draft mode, so most web browsers have not really implemented them.
+
+HTML and CSS still cannot beat other dominating tools like Word or LaTeX when it comes to typesetting content under the constraint of "pages". You may be disappointed by a lot of typesetting details on a paged HTML page. However, HTML and CSS can be extremely powerful and flexible in other aspects, especially when combined with the power of JavaScript. By the way, HTML works almost anywhere because it only requires a web browser.
+
+Although most web browsers have not implemented the W3C specs for Paged Media, a JavaScript polyfill library named ["paged.js"](https://www.pagedmedia.org/paged-js/) is currently being developed to fill the gap. This library is still experimental and has many rough edges, but looks promising enough to us, so we created an R package **pagedown** [@R-pagedown] based on this JavaScript library to paginate the HTML output of R Markdown documents. You can install the package [from Github](https://github.com/rstudio/pagedown):
+
+```{r, eval=FALSE}
+remotes::install_github('rstudio/pagedown')
 ```
 
-# Preface {-}
+To learn more about paged.js and CSS for Paged Media, you may check out [the cheatsheet of paged.js](https://www.pagedmedia.org/about-paged-media/pagedjs-cheatsheet/).
 
-```{r fig.align='center', echo=FALSE, include=identical(knitr:::pandoc_to(), 'html'), fig.link='https://www.crcpress.com/product/isbn/9781138700109'}
-knitr::include_graphics('images/cover.jpg', dpi = NA)
+The **pagedown** package contains output formats for paged HTML documents, letters, resumes, posters, business cards, and so on. Usually there is an R Markdown template for each output format, which you can access from RStudio's menu `File -> New File -> R Markdown -> From Template`.
+
+
+# Paged HTML documents {#pagedjs data-short-title="Paged documents"}
+
+To create a paged HTML document, you can use the output format `pagedown::html_paged`, e.g.,
+
+```yaml
+output:
+  pagedown::html_paged:
+    toc: true
+    number_sections: false
 ```
 
-This short book introduces an R package, **bookdown**, to change your workflow of writing books. It should be technically easy to write a book, visually pleasant to view the book, fun to interact with the book, convenient to navigate through the book, straightforward for readers to contribute or leave feedback to the book author(s), and more importantly, authors should not always be distracted by typesetting details.
+## Preview paged HTML documents
 
-The **bookdown** package is built on top of R Markdown (http://rmarkdown.rstudio.com), and inherits the simplicity of the Markdown syntax (you can learn the basics in five minutes; see Section \@ref(markdown-syntax)), as well as the possibility of multiple types of output formats (PDF/HTML/Word/...). It has also added features like multi-page HTML output, numbering and cross-referencing figures/tables/sections/equations, inserting parts/appendices, and imported the GitBook\index{GitBook} style (https://www.gitbook.com) to create elegant and appealing HTML book pages. This book itself is an example of how you can produce a book from a series of R Markdown documents, and both the printed version and the online version can look professional. You can find more examples at https://bookdown.org.
+This format is based on paged.js. Some other formats in this package are extensions of `html_paged`, such as `html_letter` and `html_resume`. Please note that you need a web server to view the output pages of these formats, because paged.js requires a web server. The web server could be either a local server or a remote one. When you compile an R Markdown document to HTML in RStudio, RStudio will display the HTML page through a local web server, so paged.js will work in RStudio Viewer. However, when you view such pages in a real web browser, you will need a separate web server. The easiest way to preview these HTML pages in a web browser may be through the RStudio addin "Infinite Moon Reader", which requires the **xaringan** package [@R-xaringan]. Or equivalently, you can call the function `xaringan::inf_mr()`. This will launch a local web server via the **servr** package [@R-servr].
 
-```{r fig.align='center', echo=FALSE, include=identical(knitr:::pandoc_to(), 'html'), fig.link='https://github.com/rstudio/bookdown'}
-knitr::include_graphics('images/logo.png', dpi = NA)
+Please note that the layout of the pages is very sensitive to the zoom level in your browser. Elements on a page are often not zoomed strictly linearly, e.g., as you zoom out, certainly elements may start to collapse into each other. The 100% zoom level usually gives the best result (press `Ctrl + 0` or `Command + 0`). You are strongly recommended to use this level when printing the page to PDF.
+
+## The CSS overriding mechanism
+
+We have provided a few default CSS stylesheets in this output format:
+
+```yaml
+output:
+  pagedown::html_paged:
+    css: ["default-fonts", "default-page", "default"]
 ```
 
-Despite the package name containing the word "book", **bookdown** is not only for books. The "book" can be anything that consists of multiple R Markdown documents meant to be read in a linear sequence, such as course handouts, study notes, a software manual, a thesis, or even a diary. In fact, many **bookdown** features apply to single R Markdown documents as well (see Section \@ref(a-single-document)).
+To find the actual CSS files behind these names, use `pagedown:::list_css()`. For example, `default-fonts` means the file `resources/css/default-fonts.css` in the installation directory of **pagedown**. The stylesheet `default-fonts` defines the typefaces of the document, `default-page` defines some page properties (such as the page size, running headers and footers, and rules for page breaks), and `default` defines the style of various elements (such as the table of contents).
 
-![Creative Commons License](images/by-nc-sa.png)  
-The online version of this book is licensed under the [Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License](http://creativecommons.org/licenses/by-nc-sa/4.0/). You can purchase a hardcopy from [Chapman & Hall](https://www.crcpress.com/product/isbn/9781138700109) or Amazon.
+If you do not like any of these default stylesheets, you can use a subset of them, or override certain CSS rules. For example, if you do not like the default typeface, you may create a CSS file `my-fonts.css` (assuming it is under the same directory of your Rmd file):
 
-## Why read this book {-}
-
-Can we write a book in one source format, and generate the output to multiple formats? Traditionally books are often written with LaTeX or Microsoft Word. Either of these tools will make writing books a one-way trip and you cannot turn back: if you choose LaTeX, you typically end up only with a PDF document; if you work with Word, you are likely to have to stay in Word forever, and may also miss the many useful features and beautiful PDF output from LaTeX.
-
-Can we focus on writing the content without worrying too much about typesetting? There seems a natural contradiction between content and appearance, and we always have to balance our time spent on these two aspects. No one can have a cake and eat it too, but it does not mean we cannot have a half and eat a half. We want our book to look reasonably pretty, and we also want to focus on the content. One possibility is to give up PDF temporarily, and what you may have in return is a pretty preview of your book as HTML web pages\index{HTML}. LaTeX\index{LaTeX} is an excellent typesetting tool, but you can be easily buried in the numerous LaTeX commands and typesetting details while you are working on the book. It is just so hard to refrain from previewing the book in PDF, and unfortunately also so common to find certain words exceed the page margin, certain figures float to a random page, five or six stray words at the very end of a chapter proudly take up a whole new page, and so on. If the book is to be printed, we will have to deal with these issues eventually, but it is not worth being distracted over and over again while you are writing the content of the book. The fact that the Markdown syntax is simpler and has fewer features than LaTeX also helps you focus on the content. Do you really have to define a new command like `\myprecious{}` that applies `\textbf{\textit{\textsf{}}}` to your text? Does the letter "R" have to be enclosed in `\proglang{}` when readers can easily figure out it stands for the R language? It does not make much difference whether everything, or nothing, needs the reader's attention.
-
-Can readers interact with examples in our book as they read it? The answer is certainly no if the book is printed on paper, but it is possible if your book has an HTML version that contains live examples, such as Shiny applications (https://shiny.rstudio.com) or HTML widgets (https://htmlwidgets.org). For example, readers may immediately know what happens if they change certain parameters of a statistical model.
-
-Can we get feedback and even contributions from readers as we develop the book? Traditionally the editor will find a small number of anonymous reviewers to review your book. Reviewers are often helpful, but you may still miss the wisdom of more representative readers. It is too late after the first edition is printed, and readers may need to wait for a few years before the second edition is ready. There are some web platforms that make it easy for people to provide feedback and contribute to your projects. GitHub (https://github.com) is one prominent example. If anyone finds a typo in your book, he/she can simply correct it online and submit the change back to you for your approval. It is a matter of clicking a button to merge the change, with no questions asked or emails back and forth. To be able to use these platforms, you need to learn the basics of version control tools like GIT, and your book source files should be in plain text.
-
-The combination of R (https://www.r-project.org), Markdown, and Pandoc (http://pandoc.org) makes it possible to go from one simple source format (R Markdown) to multiple possible output formats (PDF, HTML, EPUB, and Word, etc.). The **bookdown** package is based on R Markdown, and provides output formats for books and long-form articles, including the GitBook format, which is a multi-page HTML output format with a useful and beautiful user interface. It is much easier to typeset in HTML than LaTeX, so you can always preview your book in HTML, and work on PDF after the content is mostly done. Live examples can be easily embedded in HTML, which can make the book more attractive and useful. R Markdown is a plain-text format, so you can also enjoy the benefits of version control, such as collaborating on GitHub. We have also tried hard to port some important features from LaTeX to HTML and other output formats, such as figure/table numbering and cross-references.
-
-In short, you just prepare a few R Markdown book chapters, and **bookdown** can help you turn them into a beautiful book.
-
-## Structure of the book {-}
-
-Chapters \@ref(introduction) and \@ref(components) introduce the basic usage and syntax, which should be sufficient to get most readers started in writing a book. Chapters \@ref(output-formats) and \@ref(customization) are for those who want to fine-tune the appearance of their books. They may look very technical if you are not familiar with HTML/CSS and LaTeX. You do not need to read these two chapters very carefully for the first time. You can learn what can be possibly changed, and come back later to know how. For Chapter \@ref(editing), the technical details are not important unless you do not use the RStudio IDE (Section \@ref(rstudio-ide)). Similarly, you may feel overwhelmed by the commands presented in Chapter \@ref(publishing) to publish your book, but again, we have tried to make it easy to publish your book online via the RStudio IDE. The custom commands and functions are only for those who choose not to use RStudio's service or want to understand the technical details.
-
-To sum it up, this book is a comprehensive reference of the **bookdown** package. You can follow the 80/20 rule when reading it. Some sections are there for the sake of completeness, and not all sections are equally useful to the particular book(s) that you intend to write.
-
-## Software information and conventions {-}
-
-This book is primarily about the R package **bookdown**, so you need to at least install R and the **bookdown** package. However, your book does not have to be related to the R language at all. It can use other computing languages (C++, SQL, Python, and so on; see Appendix \@ref(software-usage)), and it can even be totally irrelevant to computing (e.g., you can write a novel, or a collection of poems). The software tools required to build a book are introduced in Appendix \@ref(software-tools).
-
-The R session information when compiling this book is shown below:
-
-```{r include=FALSE}
-# only show versions of very relevant packages
-sessionInfo = function() {
-  lapply(c('shiny', 'miniUI'), loadNamespace)
-  res = utils::sessionInfo()
-  loaded = res$loadedOnly
-  res$loadedOnly = loaded[intersect(names(loaded), c(
-    'bookdown', 'knitr', 'rmarkdown', 'shiny', 'htmltools', 'tools', 'miniUI'
-  ))]
-  res$BLAS = res$LAPACK = NULL
-  res
+```css
+body {
+  font-family: "Palatino Linotype", "Book Antiqua", Palatino, serif;
 }
 ```
 
-```{r}
-sessionInfo()
+Then include this CSS file via the `css` option:
+
+```yaml
+output:
+  pagedown::html_paged:
+    css: ["my-fonts.css", "default-page", "default"]
 ```
 
-We do not add prompts (`>` and `+`) to R source code in this book, and we comment out the text output with two hashes `##` by default, as you can see from the R session information above. This is for your convenience when you want to copy and run the code (the text output will be ignored since it is commented out). Package names are in bold text (e.g., **rmarkdown**), and inline code and filenames are formatted in a typewriter font (e.g., `knitr::knit('foo.Rmd')`). Function names are followed by parentheses (e.g., `bookdown::render_book()`). The double-colon operator `::` means accessing an object from a package. 
+Note that this overriding mechanism also works for other output formats in **pagedown**.
 
-## Acknowledgments {-}
+## Print to PDF
 
-First I'd like to thank my employer, RStudio, for providing me the opportunity to work on this exciting project. I was hoping to work on it when I first saw the GitBook project in 2013, because I immediately realized it was a beautiful book style and there was a lot more power we could add to it, judging from my experience of writing the **knitr** book [@xie2015] and reading other books. R Markdown became mature after two years, and luckily, **bookdown** became my official job in late 2015. There are not many things in the world better than the fact that your job happens to be your hobby (or vice versa). I totally enjoyed messing around with JavaScript libraries, LaTeX packages, and endless regular expressions in R. Honestly I should also thank StackOverflow (http://stackoverflow.com), and I believe you all know [what I mean,](http://bit.ly/2cWbiAp) if you have ever written any program code.
+There are three ways to print to PDF:
 
-This project is certainly not a single person's effort. Several colleagues at RStudio have helped me along the way. Hadley Wickham provided a huge amount of feedback during the development of **bookdown**, as he was working on his book _R for Data Science_ with Garrett Grolemund. JJ Allaire and Jonathan McPherson provided a lot of technical help directly to this package as well as support in the RStudio IDE. Jeff Allen, Chaita Chaudhari, and the RStudio Connect team have been maintaining the https://bookdown.org website. Robby Shaver designed a nice cover image for this book. Both Hadley Wickham and Mine Cetinkaya-Rundel reviewed the manuscript and gave me a lot of helpful comments. Tareef Kawaf tried his best to help me become a professional software engineer. It is such a blessing to work in this company with enthusiastic and smart people. I remember once I told Jonathan, "hey I found a problem in caching HTML widgets dependencies and finally figured out a possible solution". Jonathan grabbed his beer and said, "I already solved it." "Oh, nice, nice."
+1. with Google Chrome or Chromium using the menu "Print" or by pressing `Ctrl + P` (or `Command + P` on macOS). Remember to allow background graphics to be printed.
 
-I also received a lot of feedback from book authors outside RStudio, including Jan de Leeuw, Jenny Bryan, Dean Attali, Rafael Irizarry, Michael Love, Roger Peng, Andrew Clark, and so on. Some users also contributed code to the project and helped revise the book. Here is a list of all contributors: https://github.com/rstudio/bookdown/graphs/contributors. It feels good when you invent a tool and realize you are also the beneficiary of your own tool. As someone who loves the GitHub pull request model, I wished readers did not have to email me there was a typo or obvious mistake in my book, but could just fix it via a pull request. This was made possible in **bookdown**. You can see how many pull requests on typos I have merged: https://github.com/rstudio/bookdown/pulls. It is nice to have so many outsourced careful human spell checkers. It is not that I do not know how to use a real spell checker, but I do not want to do this before the book is finished, and the evil Yihui also wants to leave a few simple tasks to the readers to engage them in improving the book.
+1. using the function `pagedown::chrome_print()`. Its first argument (`input`) accepts a path to a local Rmd or HTML file or an URL. Google Chrome or Chromium must be installed on your system.
 
-Callum Webb kindly designed a nice hexbin sticker for **bookdown**.
+1. in RStudio, adding the following line in the YAML header of your Rmd file:
 
-The **bookdown** package is not possible without a few open-source software packages. In particular, Pandoc, GitBook, jQuery, and the dependent R packages, not to mention R itself. I thank the developers of these packages.
+   ```yaml
+   knit: pagedown::chrome_print
+   ```
 
-I moved to Omaha, Nebraska, in 2015, and enjoyed one year at Steeplechase Apartments, where I lived comfortably while developing the **bookdown** package, thanks to the extremely friendly and helpful staff. Then I met a professional and smart realtor, Kevin Schaben, who found a fabulous home for us in an amazingly short period of time, and I finished this book in our new home.
+   With this metadata parameter, the behavior of the "Knit" button of RStudio is modified: it produces both the HTML document and the PDF with Chrome. This functionality is suitable for any R Markdown HTML output format and is mainly convenient for small documents like presentations or notes.
+   If `chrome_print()` cannot find Chrome or Chromium automatically, set the `PAGEDOWN_CHROME` environment variable to the path to Chrome or Chromium executable.
 
-John Kimmel, the editor from Chapman & Hall/CRC, helped me publish my first book. It is my pleasure to work with him again. He generously agreed to let me keep the online version of this book for free, so I can continue to update it after it is printed and published (i.e., you do not have to wait for years for the second edition to correct mistakes and introduce new features). I wish I could be as open-minded as he is when I'm his age. Rebecca Condit and Suzanne Lassandro proofread the manuscript, and their suggestions were professional and helpful. Shashi Kumar solved some of my technical issues with the publisher's LaTeX class (`krantz.cls`) when I was trying to integrate it with **bookdown**. I also appreciate the very helpful comments from the reviewers Jan de Leeuw, Karl Broman, Brooke Anderson, Michael Grayling, Daniel Kaplan, and Max Kuhn.
+### Print to PDF on a server
 
-Lastly I want to thank my family, in particular, my wife and son, for their support. The one-year-old has discovered that my monitor will light up when he touches my keyboard, so occasionally he just creeps into my office and presses randomly on the keyboard when I'm away. I'm not sure if this counts as his contribution to the book... \@)!%)&\@\*
+If you want to use `chrome_print()` on a server (an RStudio server, for instance), Chromium or Chrome has to be present on this server and available from the `PATH` or `PAGEDOWN_CHROME` environment variables.
 
-```{block2, type='flushright', html.tag='p'}
-Yihui Xie  
-Elkhorn, Nebraska
+Be sure that the local IP address `127.0.0.1` is referenced in the `no_proxy` environment variable. Otherwise the R session won't be able to connect to Chrome.
+
+### Print to PDF with CI/CD services
+
+It is possible to produce a PDF with Chrome using a continuous integration service.
+
+With Travis, activate the Chrome addon by adding theses lines in `.travis.yml` file:
+
+```yaml
+addons:
+  chrome: stable
 ```
 
+With GitLab CI, you have to use a Docker image with R, Pandoc, **pagedown** and Chromium or Chrome.^[see an example below] Depending on the base image, you may have to install some extra fonts.
+
+Travis and GitLab CI are container-based environments running as root. As explained in the [Travis documentation](https://docs.travis-ci.com/user/chrome#sandboxing), you have to pass the `--no-sandbox` argument to `chrome_print()` (this is required for both Travis and GitLab CI):
+
+```{r, eval=FALSE}
+chrome_print(
+  ...,
+  extra_args = c("--disable-gpu",
+                 "--no-sandbox")
+)
+```
+
+Since the `--no-sandbox` option can lead to major security threats, do not use these CI/CD services to print untrusted web pages.
+
+### Print to PDF using Docker
+
+Here is a minimal Dockerfile using a popular image from the [Rocker project](https://rocker-project.org) which uses RStudio:
+
+```bash
+FROM rocker/verse:3.6.0
+
+RUN apt-get update -qq && apt-get -y install \
+  libssl-dev \
+  chromium
+
+RUN install2.r pagedown
+```
+
+If you save this Dockerfile in your current directory, you can build the image with:
+
+```bash
+docker build myimages/pagedown .
+```
+
+If you intend to use `pagedown::chrome_print()` in a container running this image, **do not launch the container as usual**.
+
+You have to use Jessie Frazelle's seccomp file for Chrome in Docker^[download here <https://raw.githubusercontent.com/jessfraz/dotfiles/master/etc/docker/seccomp/chrome.json>] as follows:
+
+```bash
+docker run -e PASSWORD=yourpassword --rm -p 8787:8787 --security-opt seccomp="$(pwd)/chrome.json" myimages/pagedown
+```
+
+With this seccomp file, you do not have to use the `"--no-sandbox"` option: this is much more secure!
+
+# Applications
+
+## Resume
+
+Currently **pagedown** has one resume format: `pagedown::html_resume`. See https://pagedown.rbind.io/html-resume/ for an example.
+
+```{r, resume-relaxed, echo=FALSE, fig.cap='The HTML resume in pagedown.'}
+knitr::include_graphics('https://user-images.githubusercontent.com/163582/49983676-c940a880-ff29-11e8-9487-3b4c94614fcc.png')
+```
+
+
+The R Markdown source document should contain two parts titled "Aside" (for the sidebar) and "Main" (for the main body), respectively. Each part can contain any numbers of sections (e.g., education background and working experience). Each section can contain any numbers of subsections, and you can write more content in a subsection.^[In case you are not very familiar with the Markdown syntax for section headings, a series of `=` under a heading is equivalent to `#` before a heading, and a series of `-` is equivalent to `##`. See Pandoc's manual for details: https://pandoc.org/MANUAL.html#headers.] Below is a quick example:
+
+```markdown
+---
+title: "Someone's resume"
+author: Your Name
+output: pagedown::html_resume
+---
+
+
+Aside
+====================================
+
+Picture, etc.
+
+Contact info
+------------------------------------
+
+Email, phone number, ...
+
+Skills
+------------------------------------
+
+- One
+- Two
+- Three
+
+Disclaimer
+------------------------------------
+
+A footer in the sidebar.
+
+
+Main
+====================================
+
+Your Name {#title}
+------------------------------------
+
+Arbitrary content.
+
+Education {data-icon=graduation-cap}
+------------------------------------
+
+### University One
+
+Title
+
+Location
+
+Year
+
+Arbitrary content
+
+### University Two
+
+...
+```
+
+The "Aside" part will be displayed in the right sidebar. This part can contain arbitrary content (not necessarily structured). For example, you can include a picture in the beginning. The "Disclaimer" section will be placed at the bottom of the first page. All icons for this resume template are from [Font Awesome](https://fontawesome.com). For example, `<i class="fa fa-envelope"></i>` will generate an envelope icon. You can look up all icon names on the Font Awesome website if you want to use other icons.
+
+For the "Main" part, all sections must follow a specific structure except the first section. The first section usually shows your name and information that you want to highlight. For the rest of sections, they should contain a title and a number of subsections. You can specify an icon for a section title via the attribute `data-icon`, e.g., `{data-icon=graduation-cap}` means an icon of a graduation cap (which can be used as a symbol for education). For each subsection, it should contain a title, followed by at least three paragraphs:
+
+- The first paragraph is a brief description of the subsection.
+
+- The second paragraph is the location.
+
+- The third paragraph is the time period. If this subsection has both a starting and ending time, separate them by a dash, e.g., `2014 - 2015` or `2014/07/27 - 2015/07/23`.
+
+The description, location, and time period can each be `N/A` if the relevant information is not available.
+
+You can write arbitrary content after the third paragraph (e.g., more paragraphs, bullet lists, and so on). If you want to write content in two columns, you may use a "concise" block, e.g.,
+
+```markdown
+::: concise
+- Taught R language to beginners.
+- Wrote Shiny app demos.
+- Converted statistical tutorials from SPSS to R language.
+:::
+```
+
+If you want to write a side note, use an "aside" block, e.g.,
+
+```markdown
+Section
+---------------
+
+### Subsection
+
+Title
+
+Location
+
+Year
+
+More info
+
+::: aside
+Some notes in the sidebar.
+:::
+```
+
+```{r, resume-sidenote, echo=FALSE, fig.cap='An example of side notes.'}
+knitr::include_graphics('https://user-images.githubusercontent.com/163582/50015125-654ecc00-ff8b-11e8-95be-fc6af8e4a66e.png')
+```
+
+There is a caveat about page breaks. By default, we allow page breaks within a subsection. Sometimes this may lead to odd output like the example in Figure \@ref(fig:break-yes). The first bullet should not be split into two columns, and the rest of bullets should have a larger left margin.
+
+```{r, break-yes, echo=FALSE, fig.cap='Allow page breaks in a subsection.'}
+knitr::include_graphics('https://user-images.githubusercontent.com/163582/49983264-520a1500-ff27-11e8-8537-66a642f617c3.png')
+```
+
+If you want to avoid layout problems like this, you may disallow page breaks via CSS:
+
+
+```css
+.blocks {
+  break-inside: avoid;
+}
+```
+
+However, this may lead to a new issue demonstrated in Figure \@ref(fig:break-no): there may be a large bottom margin on the previous page. At this point, you may start to miss your old friends, Word and LaTeX.
+
+```{r, break-no, echo=FALSE, fig.cap='Do not allow page breaks in a subsection.'}
+knitr::include_graphics('https://user-images.githubusercontent.com/163582/49983263-520a1500-ff27-11e8-8e71-cbc69ccfbc6e.png')
+```
+
+## Poster
+
+You can create a poster with the output format `pagedown::poster_relaxed` or `pagedown::poster_jacobs`. See https://pagedown.rbind.io/poster-relaxed/ and https://pagedown.rbind.io/poster-jacobs/ for examples.
+
+We do not have time to document the poster formats yet, but here is a caveat: the layout of poster sections is hardcoded in CSS styleseets, which means you cannot add/delete sections unless you know CSS (in particular, CSS Grid Layout). If you are interested in learning CSS Grid Layout, you may take a look at [the CSS of `poster_jacobs`](https://github.com/rstudio/pagedown/blob/master/inst/resources/css/poster-jacobs.css).
+
+### The ReLaXed style
+
+### The Jacobs University style
+
+## Business card
+
+To create a simple business card, you can use the `pagedown::business_card` format. See https://pagedown.rbind.io/business-card/ for an example.
+
+### Single card
+
+A single business card can be created with the following R Markdown file (this file contains only a YAML header).
+
+```yaml
+---
+name: Jane Doe
+title: Miss Nobody
+phone: "+1 123-456-7890"
+email: "jane.doe@example.com"
+url: www.example.com
+address: |
+  2020 South Street
+  Sunshine, CA 90000
+logo: "logo.png"
+output: pagedown::business_card
+---
+```
+
+You can repeat the card on multiple pages using the `repeat` variable. The following example produces as many pages as cards (12).
+
+```yaml
+---
+name: Jane Doe
+title: Miss Nobody
+phone: "+1 123-456-7890"
+email: "jane.doe@example.com"
+url: www.example.com
+address: |
+  2020 South Street
+  Sunshine, CA 90000
+logo: "logo.png"
+repeat: 12
+output: pagedown::business_card
+---
+```
+
+In order to print the cards, you may prefer a layout with several cards on the same page: you can adjust the paper size with the `paperwidth` and `paperheight` variables and define a grid layout with the `cols` and `rows` variables (you may test some combinations of these parameters to find the most appropriate one).
+
+```yaml
+---
+name: Jane Doe
+title: Miss Nobody
+phone: "+1 123-456-7890"
+email: "jane.doe@example.com"
+url: www.example.com
+address: |
+  2020 South Street
+  Sunshine, CA 90000
+logo: "logo.png"
+repeat: 12
+paperwidth: 8.5in
+paperheight: 11in
+cols: 4
+rows: 3
+output: pagedown::business_card
+---
+```
+
+You also can use markdown to define a card. Be aware to use the `slot` attributes as follows.
+
+```markdown
+---
+logo: "logo.png"
+paperwidth: 8.5in
+paperheight: 11in
+cols: 4
+rows: 3
+output: pagedown::business_card
+---
+
+::::: {.wrapper data-repeat="12"}
+[Jane Doe]{slot="name"}
+[Miss Nobody]{slot="title"}
+[+1 123-456-7890]{slot="phone"}
+[jane.doe@example.com]{slot="email"}
+[www.example.com]{slot="url"}
+
+::: {.address slot="address"}
+2020 South Street
+Sunshine, CA 90000
+:::
+:::::
+```
+
+### Different cards with shared informations
+
+You can produce business cards for members of an organization sharing some informations (address, website...).
+Common informations are declared as top level variables in the YAML header. Custom cards are defined using the `person` variable: each `key: value` pair of a `person` block overrides the corresponding top level pair.
+
+```yaml
+---
+phone: "+1 123-456-7890"
+url: www.example.com
+address: |
+  2020 South Street
+  Sunshine, CA 90000
+logo: "logo.png"
+person:
+  - name: Jane Doe
+    title: Miss Nobody
+    email: "jane.doe@example.com"
+    repeat: 6
+  - name: John Doe
+    title: Mister Nobody
+    phone: "+1 777-777-7777" # overrides the default phone
+    email: "john.doe@example.com"
+    repeat: 6
+paperwidth: 8.5in
+paperheight: 11in
+cols: 4
+rows: 3
+output: pagedown::business_card
+---
+```
+
+If you prefer, you can use markdown to create a card as follows.
+
+```markdown
+---
+name: Jane Doe
+title: Miss Nobody
+phone: "+1 123-456-7890"
+email: "jane.doe@example.com"
+url: www.example.com
+address: |
+  2020 South Street
+  Sunshine, CA 90000
+logo: "logo.png"
+repeat: 6
+paperwidth: 8.5in
+paperheight: 11in
+cols: 4
+rows: 3
+output: pagedown::business_card
+---
+
+::: {.wrapper data-repeat="6"}
+[John Doe]{slot="name"}
+[Mister Nobody]{slot="title"}
+[+1 777-777-7777]{slot="phone"}
+[john.doe@example.com]{slot="email"}
+[my.domain.com]{slot="url"}
+:::
+```
+
+### Styling business cards
+
+#### Fonts
+
+You can change the text font with the `mainfont` and/or `googlefonts` top level YAML variables:
+
+- `mainfont` will use the local font installed on your computer, e.g.
+  ```yaml
+  ---
+  name: Jane Doe
+  title: Miss Nobody
+  phone: "+1 123-456-7890"
+  email: "jane.doe@example.com"
+  url: www.example.com
+  address: |
+    2020 South Street
+    Sunshine, CA 90000
+  logo: "logo.png"
+  mainfont: Arial
+  output: pagedown::business_card
+  ---
+  ```
+
+- `googlefonts` to use fonts from https://fonts.google.com, e.g.
+  ```yaml
+  ---
+  name: Jane Doe
+  title: Miss Nobody
+  phone: "+1 123-456-7890"
+  email: "jane.doe@example.com"
+  url: www.example.com
+  address: |
+    2020 South Street
+    Sunshine, CA 90000
+  logo: "logo.png"
+  googlefonts: ["Roboto Condensed", "Raleway"]
+  output: pagedown::business_card
+  ---
+  ```
+
+#### Card sizing
+
+You can modify the card size with the `cardwidth` and `cardheight` variables. You can get a landscape card with:
+
+```yaml
+---
+name: Jane Doe
+title: Miss Nobody
+phone: "+1 123-456-7890"
+email: "jane.doe@example.com"
+url: www.example.com
+address: |
+  2020 South Street
+  Sunshine, CA 90000
+logo: "logo.png"
+cardwidth: 3.5in
+cardheight: 2in
+output: pagedown::business_card
+---
+```
+
+If you render this card, you will see that the default style does not suit well with a landscape card. Read the next section to find an example of a landscape card with a better style.
+
+#### CSS
+
+Finally, you can modify the style of the card using CSS rules.
+The markup of a card can be represented as follows^[This is technically incorrect since the card template use a shadow DOM.]:
+
+```html
+<div class="wrapper" data-repeat="1">
+  <img class="logo" src="logo.png" alt="Logo" />
+  <div class="me">
+    <div class="name"><span>Jane Doe</span></div>
+    <div class="title"><span>Miss Nobody</span></div>
+    <div class="coordinates">
+      <p class="phone"><span>+1 123-456-7890</span></p>
+      <p class="contact-email"><span>jane.doe@example.com</span></p>
+      <p class="website"><span>www.example.com</span></p>
+      <div class="address">2020 South Street Sunshine, CA 90000</div>
+    </div>
+  </div>
+</div>
+```
+
+You can use these built-in classes to style your card with CSS.
+A landscape card could be styled like this:
+
+~~~markdown
+---
+name: Jane Doe
+title: Miss Nobody
+phone: "+1 123-456-7890"
+email: "jane.doe@example.com"
+url: www.example.com
+address: |
+  2020 South Street
+  Sunshine, CA 90000
+logo: "logo.png"
+cardwidth: 3.5in
+cardheight: 2in
+output: pagedown::business_card
+---
+
+`r ''````{css}
+.logo {
+  display: block;
+  height: 20%;
+  margin-right: .3in;
+  padding: .3in 0 0;
+  float: right;
+}
+.name {
+  margin-top: .1in;
+}
+```
+~~~
+
+## Letter
+
+You can write a letter with the `pagedown::html_letter` format. See https://pagedown.rbind.io/html-letter/ for an example.
+
+## Thesis
+
+You can write a thesis with the `pagedown::thesis_paged` format created by Brent
+Thorne. See https://pagedown.rbind.io/thesis-paged/ for an example.
+
+## A Journal of Statistical Software article
+
+You can write an article for the [Journal of Statistical Sofware](https://jstatsoft.org/). See https://pagedown.rbind.io/jss-paged/ for an example.
+
+# Miscellaneous features
+
+## Lists of tables and figures
+
+Lists of tables and/or figures can be inserted in the document using the `lot` and `lof` variables in the YAML metadata. You also can customize their titles with the `lot-title` and `lof-title` variables. For instance:
+
+```yaml
+---
+title: "A document with lists of tables and figures"
+output: pagedown::html_paged
+toc-title: Contents
+lot: true
+# default: "List of Tables"
+lot-title: "Tables"
+lof: true
+# default: "List of Figures"
+lof-title: "Figures"
+---
+```
+
+## List of abbreviations
+
+A list of abbreviations is automatically built if the document contains at least one HTML `abbr` element.
+
+For instance, if the R Markdown document contains `<abbr title="Cascading Style Sheets">CSS</abbr>`, a list of abbreviations is built with the CSS definition.
+
+:::{#loa-example style="background-color:#f9f9f9;"}
+
+**List of abbreviations example**
+
+CSS
+:   Cascading Style Sheets
+:::
+
+## Front matter
+
+By default, the front matter is composed of the cover, the table of contents and the lists of figures, tables and abbreviations if any. The only difference between the front matter pages and the main content pages is the style of the page numbers.
+
+You can add extra sections to the front matter using the `front-matter` class. For instance, if you want to add a preface to the front matter, you need to write:
+
+```markdown
+# Preface {.front-matter .unnumbered}
+```
+
+## Chapters prefix
+
+The word "Chapter " can be prepended to chapter numbers in chapter titles using the `chapter` class :
+
+```markdown
+# A prefixed chapter {.chapter}
+```
+
+### Internationalization
+
+The chapter title prefix can be customized using the `chapter_name` field in the YAML header or in `_bookdown.yml` file^[see <https://bookdown.org/yihui/bookdown/internationalization.html>]
+
+When defined in the YAML header the `chapter_name` field is parsed by Pandoc. Therefore, special characters like spaces have to be escaped^[see <https://pandoc.org/MANUAL#backslash-escapes>]. For instance, if you want to use `'CHAPTER '` as a chapter title prefix, you have to write:
+
+```markdown
+---
+title: "Custom chapter title prefix"
+output: pagedown::html_paged
+chapter_name: "CHAPTER\\ "
+---
+
+# A chapter with a custom prefix {.chapter}
+```
+
+A suffix string can be added after the chapter number. For instance, to add a dot (`.`) after the chapter number, use the following value for the `chapter_name` field:
+
+```markdown
+---
+title: "Custom chapter title prefix"
+output: pagedown::html_paged
+chapter_name: ["CHAPTER\\ ", "."]
+---
+
+# A chapter with a custom prefix {.chapter}
+```
+
+If defined in `_bookdown.yml` file, the `chapter_name` field will override a `chapter_name` field declared in the YAML header.\
+Note that contrary to the **bookdown** HTML formats, a custom function is not allowed as a value for the `chapter_name` field.
+
+## Links
+
+In Markdown, the usual ways to insert links are _automatic_ and _inline_ links.
+
+### Automatic links
+
+Automatic links are created using pointy brackets, e.g., `<https://bookdown.org>`. The full URL is then inserted in the final document <https://bookdown.org>. This is convenient for a short and meaningful URL.
+
+### Inline links
+
+Inline links are useful when you do not want to show the full URL but an alternative text (because URLs are usually long and ugly). In Markdown, the link text is inserted in square brackets and the URL in parentheses, e.g. `[bookdown website](https://bookdown.org)`. On a website, the URL is hidden and replaced by the link text: [bookdown website](). The user can interactively access the URL by clicking on the link.
+
+When printing a document, we lose interactivity. So we need to show the hidden URLs. By default, the `html_paged` format adds the URLs after the link text in parentheses, for instance `[bookdown website](https://bookdown.org)` is rendered as [bookdown website](https://bookdown.org).
+
+You also can use the `links-to-footnotes` top-level YAML parameter: it transforms all the URLs to footnotes. You will get the same result as `bookdown website^[https://bookdown.org]`. To activate the `links-to-footnotes` option, insert `links-to-footnotes: true` in the YAML header. For instance:
+
+```yaml
+---
+title: "A paged HTML document"
+output: pagedown::html_paged
+links-to-footnotes: true
+---
+```
+
+## Footnotes
+
+The default behavior of pagedown is to render notes as endnotes because Paged.js does not natively support footnotes for now. However, we introduced an experimental support for footnotes. You can test it by including `paged-footnotes: true` in the YAML header of your document. Please, note that the `paged-footnotes` option only supports inline content^[see <https://github.com/rstudio/pagedown/issues/156>]. If you get any trouble with this experimental feature, please open an issue in the **pagedown** repository on GitHub.
+
+## Custom running headers {data-short-title="Running headers"}
+
+Sometimes a section title may be too long to fit the header or footer area. In this case, you can specify a shorter title for the running headers/footers via the attribute `data-short-title` after a title, e.g.,
+
+```markdown
+## The actual long long long title {data-short-title="An alternative title"}
+```
+
+## Covers
+
+Covers images can be added using the `front_cover` and `back_cover` parameters of `pagedown::html_paged()`. You can pass any path to a file or an url.
+
+```yaml
+---
+output:
+  pagedown::html_paged:
+    front_cover: !expr system.file("img", "Rlogo.png", package="png")
+    back_cover: https://www.r-project.org/Rlogo.png
+---
+
+# Content
+```
+
+Several paths or links can be passed to the `front_cover` and `back_cover` parameters. For each image declared in the `front_cover` or `back_cover` parameter, a CSS variable is created: `--front-cover`, `--back-cover`, `--front-cover-2`, `--back-cover-2`, etc.
+They can be used as value for the `background-image` CSS property:
+
+```css
+@page chapter:first {
+  background-image: var(--front-cover-2);
+}
+```
+
+You also can add textual content on the front and back covers using two special divs of classes `front-cover` and `back-cover`:
+
+
+```markdown
+---
+output:
+  pagedown::html_paged:
+    front_cover: !expr system.file("img", "Rlogo.png", package="png")
+    back_cover: https://www.r-project.org/Rlogo.png
+---
+
+:::front-cover
+# My great book about
+:::
+
+:::back-cover
+### Written with
+:::
+
+# Content
+```
+
+If the background properties of the default template does not suit your needs, here is a small hack to modify them.
+The following lines are used to position the **pagedown** hex logo on the front page of the current document:
+
+```{css}
+/* position the hex logo on the first page */
+.pagedjs_page.pagedjs_first_page {
+  background-size: 40%;
+  background-position: center 80%;
+}
+```
+
+## Page references
+
+Internal links will be followed by page numbers by default. For example, you can refer to another section using either `[Section Title]` or `[Link Text](#section-id)` (where `section-id` is the ID of the section header).
+
+Do you still remember [Paged.js](#pagedjs) that we mentioned earlier?
+
+## Line numbering
+
+For templates built on top of `html_paged`, line numbering can be added using the top-level YAML parameter `number-lines`. For example:
+
+```yaml
+---
+output: pagedown::thesis_paged
+number-lines: true
+---
+```
+
+The line numbers can be reset on each page using the `reset-page` option:
+
+```yaml
+---
+output: pagedown::thesis_paged
+number-lines:
+  reset-page: true
+---
+```
+
+You also can select the HTML elements by passing a CSS selector to the `selector` parameter. To number the lines of all the paragraphs and headers, you need to write:
+
+```yaml
+---
+output: pagedown::thesis_paged
+number-lines:
+  selector: "p, h1, h2, h3, h4, h5, h6"
+---
+```
+
+The default CSS selector is `".level1:not(.front-matter) h1, .level1 h2, .level1 h3, .level1 p"`. Line numbering is deactivated for display math environments.
+
+Be aware that the value `"normal"` of the CSS `line-height` property is not supported: elements with a normal line height are not numbered. Since `"normal"` is the default value for the `line-height` property, the CSS stylesheets must define a different value. If your template relies on custom CSS files, you can add for example:
+
+```css
+html {
+  line-height: 1.3;
+}
+```
+
+You can modify the horizontal positioning and the font size of the lines numbers using two CSS variables: `--line-numbers-padding-right` (default value `10px`) and `--line-numbers-font-size` (default value `8pt`). For further customisation, you can modify the style of the elements of class `maintextlinenumbers`. Here is an example:
+
+```css
+.maintextlinenumbers {
+  --line-numbers-padding-right: 25px;
+  --line-numbers-font-size: 10pt;
+  font-weight: bold;
+  font-family: monospace;
+}
+```
+
+Please note that this feature is sensitive to elements which break the vertical rythm of the text like inline maths.
+
+## Page breaks
+
+There are two ways to force a page break:
+
+- with the `\newpage` $\LaTeX$ command (`\pagebreak` also works)
+
+- using one of these two CSS classes: `page-break-before` or `page-break-after`\
+For example, to force a page break before a given section, use:
+  ```markdown
+  ### New section {.page-break-before}
+  ```
+
+## MathJax
+
+The following test comes from <http://www.cs.toronto.edu/~yujiali/test/mathjax.html>.
+
+Some RBM stuff:
+
+$$
+  E(\mathbf{v}, \mathbf{h}) = -\sum_{i,j}w_{ij}v_i h_j - \sum_i b_i v_i - \sum_j c_j h_j
+$$
+
+Multiline equations:
+
+$$
+  \begin{align}
+    p(v_i=1|\mathbf{h}) & = \sigma\left(\sum_j w_{ij}h_j + b_i\right) \\
+    p(h_j=1|\mathbf{v}) & = \sigma\left(\sum_i w_{ij}v_i + c_j\right)
+  \end{align}
+$$
+
+Here is an example of an inline expression: $p(x|y) = \frac{p(y|x)p(x)}{p(y)}$.
+
+## Figures and tables
+
+Table \@ref(tab:test-table):
+
+```{r, test-table}
+knitr::kable(head(iris[, -5]), caption = 'An example table.')
+```
+
+# Bibliography {-}
+
+```{r, include=FALSE}
+knitr::write_bib(c(.packages(), 'pagedown', 'xaringan', 'servr'), 'index.bib')
+```
+
+```{js, echo=FALSE}
+// insert a soft break to avoid an infinite loop with FF
+// this is because FF handles lists differently
+document.querySelector('#TOC h1').insertAdjacentHTML('afterend', '<wbr>');
+```
