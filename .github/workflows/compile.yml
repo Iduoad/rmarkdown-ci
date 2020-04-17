@@ -3,15 +3,16 @@ name: Compiling Rmarkdown file
 on: [push]
 
 jobs:
-  runs-on: ubuntu-latest
-  steps:
-    - uses: actions/checkout@v2
-    - name: Install dependencies
-      run: |
-        sudo apt install r-base r-cran-littler
-    - name: Compile document
-      run: Rscript -e "rmarkdown::render('index.rmd', quiet=TRUE)"
-      with:
-        name: report
-        path: index.pdf
+  compile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install dependencies
+        run: |
+          sudo apt install r-base r-cran-littler
+      - name: Compile document
+        run: Rscript -e "rmarkdown::render('index.rmd', quiet=TRUE)"
+        with:
+          name: report
+          path: index.pdf
 
