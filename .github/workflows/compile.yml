@@ -7,12 +7,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+
       - name: Install dependencies
         run: |
           sudo apt install r-base r-cran-littler
+
       - name: Compile document
         run: Rscript -e "rmarkdown::render('index.rmd', quiet=TRUE)"
+
+      - name: Upload report result for compile
+        uses: actions/upload-artifact@v1
         with:
           name: report
           path: index.pdf
-
